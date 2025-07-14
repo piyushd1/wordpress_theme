@@ -3,8 +3,8 @@
 		<div class="zox-art-grid">
 			<a href="<?php the_permalink(); ?>" rel="bookmark">
 			<div class="zox-art-img zoxrel zox100 zoxlh0">
-				<?php the_post_thumbnail('zox-large-thumb', array( 'class' => 'zox-reg-img lazy-load' )); ?>
-				<?php the_post_thumbnail('zox-mid-thumb', array( 'class' => 'zox-mob-img lazy-load' )); ?>
+				<?php echo zox_lazy_thumbnail('zox-large-thumb', 'zox-reg-img'); ?>
+				<?php echo zox_lazy_thumbnail('zox-mid-thumb', 'zox-mob-img'); ?>
 				<?php if ( has_post_format( 'video' ) || has_post_format( 'gallery' ) || has_post_format( 'audio' ) ) { ?>
 					<div class="zox-post-type">
 						<?php if ( has_post_format( 'video' )) { ?>

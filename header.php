@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html <?php language_attributes(); ?>>
+<html <?php language_attributes(); ?> class="no-js">
 <head>
 <meta charset="<?php bloginfo('charset'); ?>" >
 <meta name="viewport" id="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0, user-scalable=yes" />
 <?php wp_head(); ?>
 </head>
 <body <?php body_class(); ?> >
+<script>document.documentElement.className = document.documentElement.className.replace('no-js', 'js');</script>
 	<div id="zox-site" class="left zoxrel <?php $zox_dark_mode = get_option('zox_dark_mode'); if ($zox_dark_mode == '3') { echo 'zox-dark'; } ?>">
 		<?php get_template_part( 'parts/fly', 'menu' ); ?>
 		<div id="zox-search-wrap">

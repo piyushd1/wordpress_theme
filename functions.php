@@ -980,18 +980,202 @@ function zox_disqus_embed($disqus_shortname) {
 // Lazy Load
 /////////////////////////////////////
 
+// Disable WordPress native lazy loading to prevent conflicts
+add_filter( 'wp_lazy_loading_enabled', '__return_false' );
+
 add_action('wp_enqueue_scripts', function () {
    wp_enqueue_script( 'zox-intersection-observer-polyfill', get_template_directory_uri() . '/js/intersection-observer.js', '', null, true );
    wp_enqueue_script( 'zox-lozad', get_template_directory_uri() . '/js/lozad.min.js', 'zox-intersection-observer-polyfill', null, true );
 	wp_add_inline_script( 'zox-lozad', '
-	var zoxWidgets = document.querySelectorAll("#zox-home-widget-wrap img");
-	lozad(zoxWidgets, {
-		rootMargin: "0px 0px",
-		loaded: function (el) {
-			el.classList.add("is-loaded");
+	document.addEventListener("DOMContentLoaded", function() {
+		// Initialize lazy loading for all images with lazy-load class
+		var lazyImages = document.querySelectorAll(".lazy-load");
+		if (lazyImages.length > 0) {
+			var observer = lozad(lazyImages, {
+				rootMargin: "50px 0px",
+				threshold: 0.1,
+				load: function(el) {
+					// Handle different image types
+					if (el.dataset.src) {
+						// Add error handling
+						el.onerror = function() {
+							this.classList.add("lazy-error");
+							this.classList.remove("lazy-load");
+						};
+						
+						el.onload = function() {
+							this.classList.add("is-loaded");
+							this.classList.remove("lazy-load");
+							// Remove the shimmer background after load
+							setTimeout(function() {
+								el.style.background = "none";
+							}, 250);
+						};
+						
+						el.src = el.dataset.src;
+					}
+					if (el.dataset.srcset) {
+						el.srcset = el.dataset.srcset;
+					}
+					if (el.dataset.backgroundImage) {
+						el.style.backgroundImage = "url(" + el.dataset.backgroundImage + ")";
+						el.classList.add("is-loaded");
+						el.classList.remove("lazy-load");
+					}
+				},
+				loaded: function(el) {
+					// Fallback in case onload doesn\'t fire
+					setTimeout(function() {
+						if (!el.classList.contains("is-loaded") && !el.classList.contains("lazy-error")) {
+							el.classList.add("is-loaded");
+							el.classList.remove("lazy-load");
+						}
+					}, 1000);
+				}
+			});
+			observer.observe();
+			
+			// Store observer globally for reuse
+			window.zoxLazyObserver = observer;
 		}
-	}).observe();
+		
+		// Legacy support for home widget images
+		var zoxWidgets = document.querySelectorAll("#zox-home-widget-wrap img:not(.lazy-load)");
+		if (zoxWidgets.length > 0) {
+			lozad(zoxWidgets, {
+				rootMargin: "0px 0px",
+				loaded: function (el) {
+					el.classList.add("is-loaded");
+				}
+			}).observe();
+		}
+	});
+	
+	// Function to reinitialize lazy loading for dynamically added content
+	window.zoxReinitLazyLoad = function() {
+		if (window.zoxLazyObserver) {
+			var newImages = document.querySelectorAll(".lazy-load:not([data-loaded])");
+			newImages.forEach(function(img) {
+				window.zoxLazyObserver.observe(img);
+			});
+		}
+	};
+	
+	// Performance optimization: Preload critical images
+	window.zoxPreloadCritical = function() {
+		var criticalImages = document.querySelectorAll(".lazy-load");
+		var viewportHeight = window.innerHeight;
+		
+		for (var i = 0; i < Math.min(criticalImages.length, 3); i++) {
+			var img = criticalImages[i];
+			var rect = img.getBoundingClientRect();
+			
+			// Preload images that are close to viewport
+			if (rect.top < viewportHeight * 1.5) {
+				if (img.dataset.src && !img.src) {
+					img.src = img.dataset.src;
+				}
+			}
+		}
+	};
+	
+	// Call preload on page load
+	window.addEventListener("load", window.zoxPreloadCritical);
 ');
+});
+
+/////////////////////////////////////
+// Lazy Loading Helper Functions
+/////////////////////////////////////
+
+// Helper function to generate lazy loading images
+function zox_lazy_thumbnail($size = 'thumbnail', $classes = '', $post_id = null) {
+    if (!$post_id) {
+        global $post;
+        $post_id = $post->ID;
+    }
+    
+    if (!has_post_thumbnail($post_id)) {
+        return '';
+    }
+    
+    $thumb_id = get_post_thumbnail_id($post_id);
+    $thumb_url = wp_get_attachment_image_src($thumb_id, $size);
+    $thumb_alt = get_post_meta($thumb_id, '_wp_attachment_image_alt', true);
+    
+    if (!$thumb_url) {
+        return '';
+    }
+    
+    $classes = $classes ? $classes . ' lazy-load' : 'lazy-load';
+    
+    // Create a placeholder (1x1 transparent pixel)
+    $placeholder = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $thumb_url[1] . ' ' . $thumb_url[2] . '"%3E%3C/svg%3E';
+    
+    // Generate responsive srcset for better performance
+    $srcset = wp_get_attachment_image_srcset($thumb_id, $size);
+    $sizes = wp_get_attachment_image_sizes($thumb_id, $size);
+    
+    $srcset_attr = $srcset ? ' data-srcset="' . esc_attr($srcset) . '"' : '';
+    $sizes_attr = $sizes ? ' sizes="' . esc_attr($sizes) . '"' : '';
+    
+    return sprintf(
+        '<img class="%s" src="%s" data-src="%s"%s%s alt="%s" width="%d" height="%d">',
+        esc_attr($classes),
+        $placeholder,
+        esc_url($thumb_url[0]),
+        $srcset_attr,
+        $sizes_attr,
+        esc_attr($thumb_alt),
+        $thumb_url[1],
+        $thumb_url[2]
+    );
+}
+
+// Enhanced helper function for background images
+function zox_lazy_background($attachment_id, $size = 'full', $classes = '') {
+    if (!$attachment_id) {
+        return '';
+    }
+    
+    $image_url = wp_get_attachment_image_src($attachment_id, $size);
+    if (!$image_url) {
+        return '';
+    }
+    
+    $classes = $classes ? $classes . ' lazy-load' : 'lazy-load';
+    
+    return sprintf(
+        '<div class="%s" data-background-image="%s"></div>',
+        esc_attr($classes),
+        esc_url($image_url[0])
+    );
+}
+
+// Hook into infinite scroll to reinitialize lazy loading
+add_action('wp_footer', function() {
+    if (get_option('zox_infinite_scroll') == 'true') {
+        ?>
+        <script>
+        jQuery(document).ready(function($) {
+            // Hook into infinite scroll callback
+            if (typeof $.fn.infinitescroll !== 'undefined') {
+                $(document).ajaxComplete(function(event, xhr, settings) {
+                    // Check if this is an infinite scroll request
+                    if (settings.url && settings.url.indexOf('page=') !== -1) {
+                        // Reinitialize lazy loading for new content
+                        if (typeof window.zoxReinitLazyLoad === 'function') {
+                            setTimeout(function() {
+                                window.zoxReinitLazyLoad();
+                            }, 100);
+                        }
+                    }
+                });
+            }
+        });
+        </script>
+        <?php
+    }
 });
 
 /////////////////////////////////////
