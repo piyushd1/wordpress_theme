@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lazy Loading Test - ZoxPress Theme</title>
+    <style>
+        /* Lazy Loading Styles */
+        .lazy-load {
+            -webkit-transition: opacity .25s ease-in-out, transform .25s ease-in-out;
+               -moz-transition: opacity .25s ease-in-out, transform .25s ease-in-out;
+                -ms-transition: opacity .25s ease-in-out, transform .25s ease-in-out;
+                 -o-transition: opacity .25s ease-in-out, transform .25s ease-in-out;
+                transition: opacity .25s ease-in-out, transform .25s ease-in-out;
+                opacity: 0;
+                transform: translateY(20px);
+                background-color: #f5f5f5;
+                background-image: linear-gradient(90deg, #f5f5f5 25%, #e8e8e8 50%, #f5f5f5 75%);
+                background-size: 200% 100%;
+                animation: loading-shimmer 1.5s infinite;
+        }
+
+        .lazy-load.is-loaded {
+                opacity: 1;
+                transform: translateY(0);
+                background: none;
+                animation: none;
+        }
+
+        .lazy-load.lazy-error {
+            opacity: 0.5;
+            background: #f0f0f0;
+            animation: none;
+        }
+
+        /* Loading shimmer animation */
+        @keyframes loading-shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        /* Fallback for when JavaScript is disabled */
+        .no-js .lazy-load {
+            opacity: 1;
+            transform: none;
+            background: none;
+            animation: none;
+        }
+
+        /* Test styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .image-container {
+            margin: 50px 0;
+            height: 300px;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .lazy-load {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .spacer {
+            height: 100vh;
+            background: linear-gradient(45deg, #f0f0f0, #e0e0e0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <script>document.documentElement.className = document.documentElement.className.replace('no-js', 'js');</script>
+    
+    <div class="test-container">
+        <h1>Lazy Loading Test - ZoxPress Theme</h1>
+        <p>This page tests the lazy loading implementation. Scroll down to see images load as they come into view.</p>
+        
+        <div class="image-container">
+            <img class="lazy-load" 
+                 src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3C/svg%3E"
+                 data-src="https://picsum.photos/400/300?random=1" 
+                 alt="Test Image 1" 
+                 width="400" 
+                 height="300">
+        </div>
+        
+        <div class="spacer">Scroll down to test lazy loading</div>
+        
+        <div class="image-container">
+            <img class="lazy-load" 
+                 src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3C/svg%3E"
+                 data-src="https://picsum.photos/400/300?random=2" 
+                 alt="Test Image 2" 
+                 width="400" 
+                 height="300">
+        </div>
+        
+        <div class="spacer">Keep scrolling...</div>
+        
+        <div class="image-container">
+            <img class="lazy-load" 
+                 src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3C/svg%3E"
+                 data-src="https://picsum.photos/400/300?random=3" 
+                 alt="Test Image 3" 
+                 width="400" 
+                 height="300">
+        </div>
+        
+        <div class="spacer">Almost there...</div>
+        
+        <div class="image-container">
+            <img class="lazy-load" 
+                 src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3C/svg%3E"
+                 data-src="https://picsum.photos/400/300?random=4" 
+                 alt="Test Image 4" 
+                 width="400" 
+                 height="300">
+        </div>
+        
+        <div class="spacer">Test error handling with broken image:</div>
+        
+        <div class="image-container">
+            <img class="lazy-load" 
+                 src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3C/svg%3E"
+                 data-src="https://broken-url-for-testing.jpg" 
+                 alt="Broken Image Test" 
+                 width="400" 
+                 height="300">
+        </div>
+    </div>
+
+    <!-- Include the intersection observer polyfill -->
+    <script src="js/intersection-observer.js"></script>
+    <!-- Include lozad.js -->
+    <script src="js/lozad.min.js"></script>
+    
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Initialize lazy loading for all images with lazy-load class
+            var lazyImages = document.querySelectorAll(".lazy-load");
+            if (lazyImages.length > 0) {
+                var observer = lozad(lazyImages, {
+                    rootMargin: "50px 0px",
+                    threshold: 0.1,
+                    load: function(el) {
+                        // Handle different image types
+                        if (el.dataset.src) {
+                            // Add error handling
+                            el.onerror = function() {
+                                this.classList.add("lazy-error");
+                                this.classList.remove("lazy-load");
+                                console.log("Failed to load image:", this.dataset.src);
+                            };
+                            
+                            el.onload = function() {
+                                this.classList.add("is-loaded");
+                                this.classList.remove("lazy-load");
+                                console.log("Successfully loaded image:", this.dataset.src);
+                                // Remove the shimmer background after load
+                                setTimeout(function() {
+                                    el.style.background = "none";
+                                }, 250);
+                            };
+                            
+                            el.src = el.dataset.src;
+                        }
+                        if (el.dataset.srcset) {
+                            el.srcset = el.dataset.srcset;
+                        }
+                        if (el.dataset.backgroundImage) {
+                            el.style.backgroundImage = "url(" + el.dataset.backgroundImage + ")";
+                            el.classList.add("is-loaded");
+                            el.classList.remove("lazy-load");
+                        }
+                    },
+                    loaded: function(el) {
+                        // Fallback in case onload doesn't fire
+                        setTimeout(function() {
+                            if (!el.classList.contains("is-loaded") && !el.classList.contains("lazy-error")) {
+                                el.classList.add("is-loaded");
+                                el.classList.remove("lazy-load");
+                                console.log("Fallback loaded for:", el.dataset.src);
+                            }
+                        }, 1000);
+                    }
+                });
+                observer.observe();
+                
+                // Store observer globally for reuse
+                window.zoxLazyObserver = observer;
+                console.log("Lazy loading initialized for", lazyImages.length, "images");
+            }
+        });
+        
+        // Performance optimization: Preload critical images
+        window.zoxPreloadCritical = function() {
+            var criticalImages = document.querySelectorAll(".lazy-load");
+            var viewportHeight = window.innerHeight;
+            
+            for (var i = 0; i < Math.min(criticalImages.length, 3); i++) {
+                var img = criticalImages[i];
+                var rect = img.getBoundingClientRect();
+                
+                // Preload images that are close to viewport
+                if (rect.top < viewportHeight * 1.5) {
+                    if (img.dataset.src && !img.src) {
+                        img.src = img.dataset.src;
+                        console.log("Preloaded critical image:", img.dataset.src);
+                    }
+                }
+            }
+        };
+        
+        // Call preload on page load
+        window.addEventListener("load", window.zoxPreloadCritical);
+    </script>
+</body>
+</html>
